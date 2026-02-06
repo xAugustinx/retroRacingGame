@@ -9,13 +9,13 @@
 #define resolutnionX 800
 #define resolutionY 600
 
-
 #define szerokoscDrogi 0.50f
-#define polSzerokosciDrogi 200
+#define polSzerokosciDrogi resolutnionX * 0.25
 
 typedef struct {int zero; int x; int y; int xy;} chmora;
 
-int wysokosc = resolutionY / 3;
+int wysokosc = resolutionY / 4;
+
 byte turnOn = TRUE;
 
 int prawdopodobienstwo = 100;
@@ -27,21 +27,23 @@ float przyspieszenie = 0;
 
 float dystans = 0;
 
+int skrecenieDrogi[2] = {0,0};
+
 byte czyWcisnietyW = FALSE;
 byte czyPoprzedniToBylW = FALSE;
 
 typedef struct {int x; int y; char side;} punkt;
 
+byte czyWcisnolem = 25;
+
 punkt trawa[94];
 
-int wcC(int doWyciogania, int liczba)
-{
-    return ((doWyciogania / liczba) % 10) * liczba;
-}
+int wcC(int doWyciogania, int liczba) {return ((doWyciogania / liczba) % 10) * liczba;}
+
 
 void gameMechaniks()
 {
-    if (czyPoprzedniToBylW == FALSE)
+    if (czyWcisnolem == FALSE)
     {
         if (przyspieszenie > 0 && przyspieszenie / 10 > 0.01f)
         {
@@ -51,6 +53,13 @@ void gameMechaniks()
         if (predkosc > 0 && predkosc - predkosc/10 > 0) predkosc -= predkosc/10;
         else predkosc = 0;
         
+    }
+
+
+    if ((!(rand() % 1000)) && skrecenieDrogi[1] < 1 )
+    {
+        skrecenieDrogi[0] = (rand() % 800) - 400;
+        skrecenieDrogi[1] = (rand() % 800);
     }
 }
 
@@ -65,35 +74,33 @@ int main()
         trawa[i].side = (rand  () % 3 ) - 1;
     }
 
-    SDL_Window* meowOkno = SDL_CreateWindow ("FajneOkno",resolutnionX*1.4,resolutionY*1.4,resolutnionX*1.4,resolutionY*1.4, SDL_WINDOW_SHOWN);
+    SDL_Window* meowOkno = SDL_CreateWindow ("Fajne Okno",resolutnionX*1.4,resolutionY*1.4,resolutnionX*1.4,resolutionY*1.4, SDL_WINDOW_SHOWN);
     SDL_Renderer* meowRender = SDL_CreateRenderer (meowOkno, -1, SDL_RENDERER_ACCELERATED);
     SDL_Event meowEvent;
     SDL_RenderSetLogicalSize(meowRender,resolutnionX,resolutionY);
 
     while (turnOn)
     {
-
         byte czyWcisnietePrzed = czyWcisnietyW;
 
         while (SDL_PollEvent(&meowEvent)) {
             if (meowEvent.type == SDL_QUIT ) turnOn = FALSE; 
             else if (meowEvent.type == SDL_KEYDOWN)
             {
-                if (meowEvent.key.keysym.sym == SDLK_d) xG+=(resolutnionX/160);
-                else if (meowEvent.key.keysym.sym == SDLK_a) xG-=(resolutnionX/160);
+                if (meowEvent.key.keysym.sym == SDLK_d && xG < polSzerokosciDrogi * 6) xG+=(resolutnionX/160);
+                else if (meowEvent.key.keysym.sym == SDLK_a && xG > polSzerokosciDrogi * -2 ) xG-=(resolutnionX/160);
                 else if (meowEvent.key.keysym.sym == SDLK_w)
                 {
+                    czyWcisnolem = 25;
                     czyWcisnietyW++;
 
-                        if (predkosc < 160) przyspieszenie += 0.10 + (float)predkosc/10;
-                        else if (przyspieszenie - predkosc/100 > 0) przyspieszenie -= (float)predkosc/100;
-                        else if (!(rand() % prawdopodobienstwo)) {
-                            predkosc+=0.1;
-                            prawdopodobienstwo+=10;
-                        }
-
-                        predkosc += przyspieszenie/100;  
-
+                    if (predkosc < 160) przyspieszenie += 0.10 + (float)predkosc/10;
+                    else if (przyspieszenie - predkosc/100 > 0) przyspieszenie -= (float)predkosc/100;
+                    else if (!(rand() % prawdopodobienstwo)) {
+                        predkosc+=0.1;
+                        prawdopodobienstwo+=10;
+                    }
+                    predkosc += przyspieszenie/100;  
                 }  
             }
         }
@@ -104,6 +111,7 @@ int main()
             prawdopodobienstwo = 100;
             czyPoprzedniToBylW = FALSE;
         }
+        if (czyWcisnolem > 0) czyWcisnolem--;
         
         gameMechaniks();
 
@@ -112,47 +120,51 @@ int main()
         SDL_SetRenderDrawColor(meowRender,0, 0, 0,0);
         SDL_RenderClear(meowRender);
 
-        
         SDL_SetRenderDrawColor(meowRender,36, 94, 201,0);
-        for (int y = 0; y < wysokosc+1; y++) for (int x = 0; x < resolutnionX; x++) SDL_RenderDrawPoint(meowRender, x, y);
+        SDL_Rect niboWymiary = {0,0,resolutnionX,wysokosc };
+        SDL_RenderFillRect(meowRender, &niboWymiary);
 
         SDL_SetRenderDrawColor(meowRender,13, 186, 68,0);
-        for (int y = wysokosc; y < resolutionY; y++) for (int x = 0; x < resolutnionX; x++) SDL_RenderDrawPoint(meowRender, x, y);
+        SDL_Rect ziemiaMeow = {0,wysokosc,resolutnionX,resolutionY-wysokosc};
+        SDL_RenderFillRect(meowRender, &ziemiaMeow);
 
         SDL_SetRenderDrawColor(meowRender,0, 110, 0,0);
+
+        
+        int pTWczesniej = ((( wcC((int)dystans, 100) +  wcC((int)dystans, 10) + wcC((int)dystans, 1))) * (resolutionY-wysokosc) / 1000);
+
         for (int i = 0; i < 94; i++) for (int y = -9; y <= 9; y++) for (int x =-2; x <= 2; x++)
         {
-            int pT = ((wcC((int)dystans, 100) +  wcC((int)dystans, 10) + wcC((int)dystans, 1))) * (resolutionY-wysokosc) / 2000;
+            int pT = pTWczesniej;
             int xGT = xG;
-
-
+            
             if (trawa[i].y + y + pT > resolutionY ) pT-=(resolutionY-wysokosc);
 
             if (trawa[i].x + x - xGT + trawa[i].side * 2  > resolutnionX) xGT+= resolutnionX * (int)((trawa[i].x + x - xGT + trawa[i].side * 2  ) / resolutnionX) ;
             else if (trawa[i].x + x - xGT + trawa[i].side * 2 < 1) xGT += resolutnionX * (((trawa[i].x + x - xGT + trawa[i].side * 2) / resolutnionX) - 1);
             
-            if (y < -3) SDL_RenderDrawPoint(meowRender,trawa[i].x + x - xGT + trawa[i].side * 2  ,trawa[i].y + y + pT);
-            else SDL_RenderDrawPoint(meowRender,trawa[i].x +x - xGT,trawa[i].y + y+ pT);
+            if (y < -3) SDL_RenderDrawPoint(meowRender,trawa[i].x + x - xGT + trawa[i].side * 2  ,trawa[i].y + y + pT );
+            else SDL_RenderDrawPoint(meowRender,trawa[i].x +x - xGT, trawa[i].y + y+ pT );
         }
 
-        float stepXA = (resolutnionX * szerokoscDrogi - xG + (resolutnionX/800) * polSzerokosciDrogi) / resolutionY;
-        float stepXB = (resolutnionX * szerokoscDrogi - xG - (resolutnionX/800) * polSzerokosciDrogi) / resolutionY;
+        float zzz = resolutnionX * szerokoscDrogi - xG;
 
-        float punktStartowyA[] = {(resolutnionX/2)+ (resolutnionX * szerokoscDrogi) - xG + (resolutnionX/800) * polSzerokosciDrogi , resolutionY};
-        float punktStartowyB[] = {(resolutnionX/2)+ (resolutnionX * szerokoscDrogi) - xG - (resolutnionX/800) * polSzerokosciDrogi , resolutionY};
+        float steps[] = {(zzz +  polSzerokosciDrogi),(zzz -  polSzerokosciDrogi), zzz };
+
+        float points[] = {   polSzerokosciDrogi,  -  polSzerokosciDrogi, 0};
+        for (int i = 0; i < sizeof(points)/sizeof(float); i++ ) points[i]+= (resolutnionX/2)+ (resolutnionX * szerokoscDrogi) -xG;
+        
 
         byte kolorBarierkiKod = (byte)((wcC((int)dystans, 100) +  wcC((int)dystans, 10) + wcC((int)dystans, 1)) / 3.92f);
         byte kolorBarierkiPerSe = 0;
 
-        for (int i = wysokosc; punktStartowyA[1] > wysokosc; i++) {
-            punktStartowyA[0]-= stepXA;
-            punktStartowyA[1]-= 1;
-            punktStartowyB[0]-= stepXB;
-            punktStartowyB[1]-= 1;
+        for (int i = resolutionY; wysokosc <= i; i--) {
 
-            SDL_SetRenderDrawColor(meowRender,54, 52, 47,0);
-            for (int b = (int) (punktStartowyB[0]); b <= (int) (punktStartowyA[0]); b++)
-            {SDL_RenderDrawPoint(meowRender,b, (int)punktStartowyB[1]); }
+            for (int b = 0; b < sizeof(steps) /sizeof(float) ; b++) points[b]-= steps[b] / resolutionY;
+            
+            SDL_SetRenderDrawColor(meowRender,54, 52, 47,0); //droga
+
+            SDL_RenderDrawLine(meowRender,points[0],i,points[1],i);
 
             if (kolorBarierkiKod > 255 / 2) kolorBarierkiPerSe = 255;
             else kolorBarierkiPerSe = 0;
@@ -160,16 +172,29 @@ int main()
             kolorBarierkiKod+=(resolutionY/600) * 3;
 
             SDL_SetRenderDrawColor(meowRender,255, kolorBarierkiPerSe, kolorBarierkiPerSe,0);
-            for (int i = (resolutnionX/800) * -3; i <= (resolutnionX/800) * 3; i++ )
-            {
-                SDL_RenderDrawPoint(meowRender,(int) (punktStartowyA[0]) +i, (int) punktStartowyA[1] ); 
-                SDL_RenderDrawPoint(meowRender,(int) (punktStartowyB[0]) +i, (int) punktStartowyB[1] ); 
-            }
 
+            for (int b = 0; b < 2; b++ ) SDL_RenderDrawLine(meowRender,(int) (points[b]) + (resolutnionX/800) * -3,i,(int) (points[b]) + (resolutnionX/800) * 3,i  );
+
+            if (kolorBarierkiKod > 200) SDL_SetRenderDrawColor(meowRender,54, 52, 47,0);
+            else SDL_SetRenderDrawColor(meowRender,224, 189, 7 ,0);
+
+            SDL_RenderDrawLine(meowRender,(int) (points[2]) + (resolutnionX/800) * -5,i,(int) (points[2]) + (resolutnionX/800) * 5,i  );
         }
 
-        SDL_RenderPresent(meowRender);
-        SDL_Delay(20);
+        SDL_Rect sdkrejty[] = {{resolutnionX * 0.4f,resolutionY * 0.77f ,resolutnionX * 0.2f,resolutionY * 0.10f },
+        {resolutnionX * 0.41f,resolutionY * 0.85f ,resolutnionX * 0.02f,resolutionY * 0.05f },
+        {resolutnionX * 0.57f,resolutionY * 0.85f ,resolutnionX * 0.02f,resolutionY * 0.05f }};
+
+        SDL_SetRenderDrawColor(meowRender,110, 14, 0,0);
+        SDL_RenderFillRect(meowRender, &sdkrejty[0]);
+        SDL_SetRenderDrawColor(meowRender,0, 0, 0,0);
+        for (int i = 1; i < 3; i++) SDL_RenderFillRect(meowRender, &sdkrejty[i]);
+
+        SDL_RenderDrawLine(meowRender, resolutnionX * 0.4f,resolutionY * 0.77f,resolutnionX * 0.43f,resolutionY * 0.70f );
+        SDL_RenderDrawLine(meowRender, resolutnionX * 0.6f,resolutionY * 0.77f,resolutnionX * 0.57f,resolutionY * 0.70f );
+        SDL_RenderDrawLine(meowRender,resolutnionX * 0.43f,resolutionY * 0.70f,resolutnionX * 0.57f,resolutionY * 0.70f);
+
+        SDL_RenderPresent(meowRender); SDL_Delay(60);
     }
     SDL_DestroyRenderer (meowRender);
     SDL_DestroyWindow (meowOkno);
