@@ -12,6 +12,9 @@
 #define szerokoscDrogi 0.50f
 #define polSzerokosciDrogi resolutnionX * 0.25
 
+
+#define klawisz meowEvent.key.keysym.sym
+
 typedef struct {int zero; int x; int y; int xy;} chmora;
 
 int wysokosc = resolutionY / 4;
@@ -27,10 +30,10 @@ float przyspieszenie = 0;
 
 float dystans = 0;
 
-int skrecenieDrogi[2] = {0,0};
+int skrecenieDrogi[] = {FALSE,0,0,0};
+float mocSkretu = 1.0f;
 
 byte czyWcisnietyW = FALSE;
-byte czyPoprzedniToBylW = FALSE;
 
 typedef struct {int x; int y; char side;} punkt;
 
@@ -41,25 +44,28 @@ punkt trawa[94];
 int wcC(int doWyciogania, int liczba) {return ((doWyciogania / liczba) % 10) * liczba;}
 
 
-void gameMechaniks()
+void gameMechaniks(int losowa)
 {
     if (czyWcisnolem == FALSE)
     {
-        if (przyspieszenie > 0 && przyspieszenie / 10 > 0.01f)
-        {
-            przyspieszenie -= przyspieszenie / 10;
-        }
+        if (przyspieszenie > 0 && przyspieszenie / 10 > 0.01f) przyspieszenie -= przyspieszenie / 10;
         else przyspieszenie = 0;
+
         if (predkosc > 0 && predkosc - predkosc/10 > 0) predkosc -= predkosc/10;
         else predkosc = 0;
         
     }
 
-
-    if ((!(rand() % 1000)) && skrecenieDrogi[1] < 1 )
+    if ((!losowa) && skrecenieDrogi[0] == FALSE && predkosc > 10  )
     {
-        skrecenieDrogi[0] = (rand() % 800) - 400;
-        skrecenieDrogi[1] = (rand() % 800);
+        skrecenieDrogi[0] = TRUE;
+        skrecenieDrogi[1] = dystans + 1000 + (rand() % 8000) + wysokosc;
+        skrecenieDrogi[3] = skrecenieDrogi[1] + 10000 + (rand() % 100000);
+        char plusMinut[] = {-1,1};
+        mocSkretu = 0.75 + (rand() % 100) / 100.0f;
+        skrecenieDrogi[2] = plusMinut[rand() % 2];
+
+        printf("%d %f %f\n",skrecenieDrogi[1], dystans, mocSkretu);
     }
 }
 
@@ -87,33 +93,31 @@ int main()
             if (meowEvent.type == SDL_QUIT ) turnOn = FALSE; 
             else if (meowEvent.type == SDL_KEYDOWN)
             {
-                if (meowEvent.key.keysym.sym == SDLK_d && xG < polSzerokosciDrogi * 6) xG+=(resolutnionX/160);
-                else if (meowEvent.key.keysym.sym == SDLK_a && xG > polSzerokosciDrogi * -2 ) xG-=(resolutnionX/160);
-                else if (meowEvent.key.keysym.sym == SDLK_w)
+                if (klawisz == SDLK_d && xG < polSzerokosciDrogi * 6) xG+=(resolutnionX/160);
+                else if (klawisz == SDLK_a && xG > polSzerokosciDrogi * -2 ) xG-=(resolutnionX/160);
+                else if (klawisz == SDLK_w)
                 {
                     czyWcisnolem = 25;
                     czyWcisnietyW++;
 
                     if (predkosc < 160) przyspieszenie += 0.10 + (float)predkosc/10;
-                    else if (przyspieszenie - predkosc/100 > 0) przyspieszenie -= (float)predkosc/100;
+                    else if (przyspieszenie - predkosc/100 > 0) przyspieszenie -= (float)predkosc/150;
                     else if (!(rand() % prawdopodobienstwo)) {
                         predkosc+=0.1;
                         prawdopodobienstwo+=10;
                     }
                     predkosc += przyspieszenie/100;  
-                }  
+                } 
+                else if (klawisz == SDLK_s) predkosc--;
+                else if (klawisz == SDLK_SPACE) dystans -= 100;
+                
             }
         }
 
-        czyPoprzedniToBylW = TRUE;
-        if (czyWcisnietyW == czyWcisnietePrzed) 
-        {
-            prawdopodobienstwo = 100;
-            czyPoprzedniToBylW = FALSE;
-        }
+        if (czyWcisnietyW == czyWcisnietePrzed) prawdopodobienstwo = 100;
         if (czyWcisnolem > 0) czyWcisnolem--;
         
-        gameMechaniks();
+        gameMechaniks((rand() % 100));
 
         dystans+= predkosc;
 
@@ -148,23 +152,28 @@ int main()
         }
 
         float zzz = resolutnionX * szerokoscDrogi - xG;
-
         float steps[] = {(zzz +  polSzerokosciDrogi),(zzz -  polSzerokosciDrogi), zzz };
-
         float points[] = {   polSzerokosciDrogi,  -  polSzerokosciDrogi, 0};
+
+
         for (int i = 0; i < sizeof(points)/sizeof(float); i++ ) points[i]+= (resolutnionX/2)+ (resolutnionX * szerokoscDrogi) -xG;
         
-
         byte kolorBarierkiKod = (byte)((wcC((int)dystans, 100) +  wcC((int)dystans, 10) + wcC((int)dystans, 1)) / 3.92f);
         byte kolorBarierkiPerSe = 0;
 
+        float ofsetObl = 1;
+
         for (int i = resolutionY; wysokosc <= i; i--) {
+
+            if (skrecenieDrogi[0] && skrecenieDrogi[1] + i < dystans+wysokosc && skrecenieDrogi[3] > dystans+wysokosc+i) ofsetObl +=  (ofsetObl/(resolutnionX/8.0f) * mocSkretu );
+            if (i == wysokosc && skrecenieDrogi[3] < dystans+wysokosc+i) skrecenieDrogi[0] = FALSE;
+            int ofset = ofsetObl * skrecenieDrogi[2];
+
 
             for (int b = 0; b < sizeof(steps) /sizeof(float) ; b++) points[b]-= steps[b] / resolutionY;
             
             SDL_SetRenderDrawColor(meowRender,54, 52, 47,0); //droga
-
-            SDL_RenderDrawLine(meowRender,points[0],i,points[1],i);
+            SDL_RenderDrawLine(meowRender,points[0]+ofset,i,points[1]+ofset,i);
 
             if (kolorBarierkiKod > 255 / 2) kolorBarierkiPerSe = 255;
             else kolorBarierkiPerSe = 0;
@@ -173,12 +182,12 @@ int main()
 
             SDL_SetRenderDrawColor(meowRender,255, kolorBarierkiPerSe, kolorBarierkiPerSe,0);
 
-            for (int b = 0; b < 2; b++ ) SDL_RenderDrawLine(meowRender,(int) (points[b]) + (resolutnionX/800) * -3,i,(int) (points[b]) + (resolutnionX/800) * 3,i  );
+            for (int b = 0; b < 2; b++ ) SDL_RenderDrawLine(meowRender,(int) (points[b]) + (resolutnionX/800) * -3 + ofset,i,(int) (points[b]) + (resolutnionX/800) * 3+ ofset,i  );
 
             if (kolorBarierkiKod > 200) SDL_SetRenderDrawColor(meowRender,54, 52, 47,0);
             else SDL_SetRenderDrawColor(meowRender,224, 189, 7 ,0);
 
-            SDL_RenderDrawLine(meowRender,(int) (points[2]) + (resolutnionX/800) * -5,i,(int) (points[2]) + (resolutnionX/800) * 5,i  );
+            SDL_RenderDrawLine(meowRender,(int) (points[2]) + (resolutnionX/800) * -5+ofset,i,(int) (points[2]) + (resolutnionX/800) * 5+ofset,i  );
         }
 
         SDL_Rect sdkrejty[] = {{resolutnionX * 0.4f,resolutionY * 0.77f ,resolutnionX * 0.2f,resolutionY * 0.10f },
